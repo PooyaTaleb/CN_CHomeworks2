@@ -1,4 +1,7 @@
-
+//       Network topology
+//
+//       n0 -------------- n1
+//            1Mbps-10ms
 
 #include <string>
 #include <fstream>
@@ -21,6 +24,7 @@
 #include "ns3/mobility-module.h"
 #include "ns3/csma-module.h"
 #include "ns3/yans-wifi-helper.h"
+#include "ns3/yans-error-rate-model.h"
 #include "ns3/ssid.h"
 
 using namespace ns3;
@@ -88,9 +92,8 @@ main (int argc, char *argv[])
 {
   uint32_t maxBytes = 0;
   double error = 0.000001;
-  //double duration = 50.0;
+  double duration = 50.0;
   bool verbose = true;
-  uint32_t nCsma = 3;
   uint32_t nWifi = 7;
   bool tracing = false;
 
@@ -98,7 +101,6 @@ main (int argc, char *argv[])
   CommandLine cmd;
   cmd.AddValue ("maxBytes", "Total number of bytes for application to send", maxBytes);
   cmd.AddValue ("error", "Packet error rate", error);
-  cmd.AddValue ("nCsma", "Number of \"extra\" CSMA nodes/devices", nCsma);
   cmd.AddValue ("nWifi", "Number of wifi STA devices", nWifi);
   cmd.AddValue ("verbose", "Tell echo applications to log if true", verbose);
   cmd.AddValue ("tracing", "Enable pcap tracing", tracing);
@@ -121,18 +123,18 @@ main (int argc, char *argv[])
   NS_LOG_INFO ("Create nodes");
 
   NodeContainer nodes;
-  nodes.Create (1);
+  nodes.Create (2);
 
   NS_LOG_INFO ("Create channels");
 
-
   NodeContainer wifiStaNodes;
   wifiStaNodes.Create (nWifi);
-  NodeContainer wifiApNode = nodes.Get (0);
+  NodeContainer wifiApNode = wifiStaNodes.Get (0);
 
   YansWifiChannelHelper channel = YansWifiChannelHelper::Default ();
   YansWifiPhyHelper phy;
   phy.SetChannel (channel.Create ());
+  phy.SetErrorRateModel ("ns3::YansErrorRateModel");
 
   WifiHelper wifi;
   wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
@@ -170,33 +172,31 @@ main (int argc, char *argv[])
   mobility.Install (wifiApNode);
 
   InternetStackHelper stack;
-  stack.Install (wifiApNode);
   stack.Install (wifiStaNodes);
 
   Ipv4AddressHelper address;
-
 
   Ipv4InterfaceContainer wifiInterfaces ;
   address.SetBase ("10.1.3.0", "255.255.255.0");
   address.Assign (staDevices);
   wifiInterfaces = address.Assign (apDevices);
 
-  UdpEchoServerHelper echoServer (9);
-
-  //ApplicationContainer serverApps = echoServer.Install (wifiStaNodes.Get (nWifi-2));
-  ApplicationContainer serverApps = echoServer.Install (wifiApNode );
-  serverApps.Start (Seconds (1.0));
-  serverApps.Stop (Seconds (10.0));
-
-  UdpEchoClientHelper echoClient (wifiInterfaces.GetAddress (0), 9);
-  echoClient.SetAttribute ("MaxPackets", UintegerValue (1));
-  echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
-  echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
-
-  ApplicationContainer clientApps = 
-    echoClient.Install (wifiApNode );
-  clientApps.Start (Seconds (2.0));
-  clientApps.Stop (Seconds (10.0));
+//  UdpEchoServerHelper echoServer (9);
+//
+//  //ApplicationContainer serverApps = echoServer.Install (wifiStaNodes.Get (nWifi-2));
+//  ApplicationContainer serverApps = echoServer.Install (wifiApNode );
+//  serverApps.Start (Seconds (1.0));
+//  serverApps.Stop (Seconds (10.0));
+//
+//  UdpEchoClientHelper echoClient (wifiInterfaces.GetAddress (0), 9);
+//  echoClient.SetAttribute ("MaxPackets", UintegerValue (1));
+//  echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
+//  echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
+//
+//  ApplicationContainer clientApps = 
+//    echoClient.Install (wifiApNode );
+//  clientApps.Start (Seconds (2.0));
+//  clientApps.Stop (Seconds (10.0));
 
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
@@ -205,97 +205,94 @@ main (int argc, char *argv[])
   if (tracing)
     {
       phy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
-      //pointToPoint.EnablePcapAll ("third");
       phy.EnablePcap ("third", apDevices.Get (0));
-      //csma.EnablePcap ("third", csmaDevices.Get (0), true);
     }
 
   Simulator::Run ();
-  Simulator::Destroy ();
-  return 0;
-//  // Create error model on receiver.
+  // Create error model on receiver.
 //  Ptr<RateErrorModel> em = CreateObject<RateErrorModel> ();
 //  em->SetAttribute ("ErrorRate", DoubleValue (error));
-//  devices.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (em));
+//  apDevices.Get (0)->SetAttribute ("ReceiveErrorModel", PointerValue (em));
+  //wifiApNode.Get(0) ->SetAttribute("ErrorRateModel",DoubleValue(0.001));
+
+  // Install the internet stack on the nodes.
+  //InternetStackHelper internet;
+  //internet.Install (nodes);
 //
-//  // Install the internet stack on the nodes.
-//  InternetStackHelper internet;
-//  internet.Install (nodes);
-//
-//  // Add IP addresses.
+  // Add IP addresses.
 //  NS_LOG_INFO ("Assign IP Addresses");
 //  Ipv4AddressHelper ipv4;
 //  ipv4.SetBase ("10.1.1.0", "255.255.255.0");
 //  Ipv4InterfaceContainer ipv4Container = ipv4.Assign (devices);
-//
-//  NS_LOG_INFO ("Create Applications");
-//
+
+  NS_LOG_INFO ("Create Applications");
+
 //  // Create a BulkSendApplication and install it on node 0.
-//  uint16_t port = 1102;
+  uint16_t port = 1102;
 //
-//  BulkSendHelper source ("ns3::TcpSocketFactory",InetSocketAddress (ipv4Container.GetAddress (1), port));
-//
-//  // Set the amount of data to send in bytes. Zero is unlimited.
-//  source.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
-//  ApplicationContainer sourceApps = source.Install (nodes.Get (0));
-//
-//  sourceApps.Start (Seconds (0.0));
-//  sourceApps.Stop (Seconds (duration));
-//
-//  // Create a PacketSinkApplication and install it on node 1.
-//  PacketSinkHelper sink ("ns3::TcpSocketFactory",
-//                         InetSocketAddress (Ipv4Address::GetAny (), port));
-//  ApplicationContainer sinkApps = sink.Install (nodes.Get (1));
-//
-//
-//  sinkApps.Start (Seconds (0.0));
-//  sinkApps.Stop (Seconds (duration));
-//
-//  // Just for debug (in our code).
-//  tcpSink = DynamicCast<PacketSink> (sinkApps.Get (0));
-//
-//  NS_LOG_INFO ("Run Simulation");
-//
-//  std::string fileNameWithNoExtension = "errorVSThroughput_";
-//  std::string mainPlotTitle = "Error vs Throughput";
-//  std::string graphicsFileName        = fileNameWithNoExtension + ".png";
-//  std::string plotFileName            = fileNameWithNoExtension + ".plt";
-//  std::string plotTitle               = mainPlotTitle + ", Error: " + std::to_string(error);
-//  std::string dataTitle               = "Throughput";
-//
-//  // Instantiate the plot and set its title.
-//  Gnuplot gnuplot (graphicsFileName);
-//  gnuplot.SetTitle (plotTitle);
-//
-//  // Make the graphics file, which the plot file will be when it
-//  // is used with Gnuplot, be a PNG file.
-//  gnuplot.SetTerminal ("png");
-//
-//  // Set the labels for each axis.
-//  gnuplot.SetLegend ("Flow", "Throughput");
-//
-//
-//  Gnuplot2dDataset dataset;
-//  dataset.SetTitle (dataTitle);
-//  dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-//
-//  // Flow monitor.
-//  Ptr<FlowMonitor> flowMonitor;
-//  FlowMonitorHelper flowHelper;
-//  flowMonitor = flowHelper.InstallAll ();
-//
-//  ThroughputMonitor (&flowHelper, flowMonitor, dataset);
-//  //AverageDelayMonitor (&flowHelper, flowMonitor, dataset);
-//
-//  Simulator::Stop (Seconds (duration));
-//  Simulator::Run ();
-//
-//  //Gnuplot ...continued.
-//  gnuplot.AddDataset (dataset);
-//  // Open the plot file.
-//  std::ofstream plotFile (plotFileName.c_str ());
-//  // Write the plot file.
-//  gnuplot.GenerateOutput (plotFile);
-//  // Close the plot file.
-//  plotFile.close ();
+  BulkSendHelper source ("ns3::TcpSocketFactory",InetSocketAddress (wifiInterfaces.GetAddress (2), port));
+  // Set the amount of data to send in bytes. Zero is unlimited.
+  //source.SetAttribute ("MaxBytes", UintegerValue (maxBytes));
+  ApplicationContainer sourceApps = source.Install (wifiStaNodes.Get (0));
+
+  sourceApps.Start (Seconds (0.0));
+  sourceApps.Stop (Seconds (duration));
+
+  // Create a PacketSinkApplication and install it on node 1.
+  PacketSinkHelper sink ("ns3::TcpSocketFactory",
+                         InetSocketAddress (Ipv4Address::GetAny (), port));
+  ApplicationContainer sinkApps = sink.Install (wifiStaNodes.Get (2));
+
+
+  sinkApps.Start (Seconds (0.0));
+  sinkApps.Stop (Seconds (duration));
+
+  // Just for debug (in our code).
+  tcpSink = DynamicCast<PacketSink> (sinkApps.Get (0));
+
+  NS_LOG_INFO ("Run Simulation");
+
+  std::string fileNameWithNoExtension = "errorVSThroughput_";
+  std::string mainPlotTitle = "Error vs Throughput";
+  std::string graphicsFileName        = fileNameWithNoExtension + ".png";
+  std::string plotFileName            = fileNameWithNoExtension + ".plt";
+  std::string plotTitle               = mainPlotTitle + ", Error: " + std::to_string(error);
+  std::string dataTitle               = "Throughput";
+
+  // Instantiate the plot and set its title.
+  Gnuplot gnuplot (graphicsFileName);
+  gnuplot.SetTitle (plotTitle);
+
+  // Make the graphics file, which the plot file will be when it
+  // is used with Gnuplot, be a PNG file.
+  gnuplot.SetTerminal ("png");
+
+  // Set the labels for each axis.
+  gnuplot.SetLegend ("Flow", "Throughput");
+
+
+  Gnuplot2dDataset dataset;
+  dataset.SetTitle (dataTitle);
+  dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
+
+  // Flow monitor.
+  Ptr<FlowMonitor> flowMonitor;
+  FlowMonitorHelper flowHelper;
+  flowMonitor = flowHelper.InstallAll ();
+
+  //ThroughputMonitor (&flowHelper, flowMonitor, dataset);
+  AverageDelayMonitor (&flowHelper, flowMonitor, dataset);
+
+  Simulator::Stop (Seconds (duration));
+  Simulator::Run ();
+
+  //Gnuplot ...continued.
+  gnuplot.AddDataset (dataset);
+  // Open the plot file.
+  std::ofstream plotFile (plotFileName.c_str ());
+  // Write the plot file.
+  gnuplot.GenerateOutput (plotFile);
+  // Close the plot file.
+  plotFile.close ();
+  return 0;
 }
