@@ -27,6 +27,7 @@
 
 using namespace ns3;
 
+// added from sample.cc and changed
 void
 ThroughputMonitor (FlowMonitorHelper *fmhelper, Ptr<FlowMonitor> flowMon,Gnuplot2dDataset DataSet)
 {
@@ -56,6 +57,7 @@ ThroughputMonitor (FlowMonitorHelper *fmhelper, Ptr<FlowMonitor> flowMon,Gnuplot
 }
 
 
+// added from sample.cc and changed
 void
 AverageDelayMonitor (FlowMonitorHelper *fmhelper, Ptr<FlowMonitor> flowMon,Gnuplot2dDataset DataSet)
 {
@@ -83,21 +85,28 @@ AverageDelayMonitor (FlowMonitorHelper *fmhelper, Ptr<FlowMonitor> flowMon,Gnupl
   flowMon->SerializeToXmlFile ("AverageDelayMonitor.xml", true, true);
 }
 
+// a load balancing application
 class LB : public Application
 {
   public:
+	// constructor
 	LB(uint16_t port, Ipv4InterfaceContainer &right) : mePort(port), meRight(right)
 	{
+		//seed the (pseudo-)random generator
 		std::srand(time(0));
 	};
   private:
+	//starts the loadbalancing application
 	virtual void StartApplication (void)
 	{
+		// a udp socket to receive incoming data
 		meSock = Socket::CreateSocket(GetNode(), UdpSocketFactory::GetTypeId());
 		InetSocketAddress local =
                          InetSocketAddress (Ipv4Address::GetAny (), mePort);
 		meSock->Bind(local);
+		//read the incoming data and pass it on
 		meSock->SetRecvCallback(MakeCallback(&LB::readAndPass, this));
+		//create tcp sockets to each of the receiving nodes (labeled right in our code)
 		for (uint16_t i=0 ; i < meRight.GetN() ; ++i)
 		{
 			Ptr<Socket> s = Socket::CreateSocket(GetNode(), TcpSocketFactory::GetTypeId());
@@ -107,10 +116,13 @@ class LB : public Application
 			rightSocks.push_back(s);
 		}
 	};
+	//close the app
 	virtual void StopApplication (void)
 	{
+		//close the sockets
 		meSock->Close();
 	};
+	// the part that recieves and sends data
 	void readAndPass(Ptr<Socket> s)
 	{
 		Ptr<Packet> p;
@@ -118,27 +130,32 @@ class LB : public Application
 		uint32_t dest;
 		while (p = s->RecvFrom(source))
 		{
+			//detecs end of file
 			if(p->GetSize()==0) break;
+			//give destination index a name because we reuse it and it is generated randomly
 			dest = std::rand() % meRight.GetN();
+			//send
 			rightSocks[dest]->Send(p);
-			NS_LOG_INFO(Simulator::Now().As(Time::S)<<" : packet forwarded to"<<meRight.GetAddress(dest)<<"i on port "<<mePort);
+			//log
+			// NS_LOG_INFO(Simulator::Now().As(Time::S)<<" : packet forwarded to"<<meRight.GetAddress(dest)<<"i on port "<<mePort);
 		}
 	};
 
 
-	uint16_t mePort;
-	Ipv4InterfaceContainer meRight;
-	Ptr<Socket> meSock;
-	std::vector<Ptr<Socket>> rightSocks;
+	//private attribiutes
+	uint16_t mePort;			// a pirate's port
+	Ipv4InterfaceContainer meRight;		// a pirates right hand man (receiver)
+	Ptr<Socket> meSock;			// a pirates sock (socket)
+	std::vector<Ptr<Socket>> rightSocks;	// a collection of sock(et)s
 };
 
 
 int
 main (int argc, char *argv[])
 {
-  double error = 0.000001;
-  uint32_t nWifi = 3;
-  std::string phyRate = "HtMcs7";                    /* Physical layer bitrate. */
+  double error = 0.000001;				// error rate
+  uint32_t nWifi = 3;					// number of nodes on either side of the load balancer
+  std::string phyRate = "HtMcs7";			// Physical layer bitrate
 
   // Allow users to pick any of the defaults at run-time, via command-line arguments
   CommandLine cmd;
@@ -147,31 +164,28 @@ main (int argc, char *argv[])
 
   cmd.Parse (argc, argv);
 
-  
   // Explicitly create the nodes in the topology.
-  NS_LOG_INFO ("Create nodes");
+  // NS_LOG_INFO ("Create nodes");
 
-  NodeContainer left  ;
-  NodeContainer right ;
-  NodeContainer center;
+  NodeContainer left  ;		// senders (on the left of load balancer)
+  NodeContainer right ;		// receivers (on the right of load balancer)
+  NodeContainer center;		// load balancer (in the center of the diagram)
 
-  left.Create(nWifi);
-  right.Create(nWifi);
-  center.Create(1);
+  left.Create(nWifi);		// create a number of nodes on the left
+  right.Create(nWifi);		// create a number of nodes on the right
+  center.Create(1);		// create the load balancer
 
-  NS_LOG_INFO ("Create channels");
+  // NS_LOG_INFO ("Create channels");
 
   YansWifiChannelHelper channel = YansWifiChannelHelper::Default ();
   WifiHelper wifiHelper;
   channel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-  channel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (5e8));
+  // set the propagation model
+  channel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (5e8)); 
   YansWifiPhyHelper phy;
   wifiHelper.SetStandard (WIFI_STANDARD_80211n_5GHZ);
   phy.SetChannel (channel .Create ());
   phy.SetErrorRateModel ("ns3::YansErrorRateModel");
-  wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-                                      "DataMode", StringValue (phyRate),
-                                      "ControlMode", StringValue ("HtMcs0"));
 
   WifiHelper wifi;
   wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
@@ -193,6 +207,7 @@ main (int argc, char *argv[])
                "Ssid", SsidValue (ssid));
   apCenter = wifi.Install (phy, mac, center);
 
+  //moving senders and receivers
   MobilityHelper mobility;
 
   mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
@@ -200,11 +215,15 @@ main (int argc, char *argv[])
   mobility.Install (left );
   mobility.Install (right);
 
+  //stationary accesspoint and load balancer
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (center);
 
+  // Create error model on receiver.
+  Ptr<RateErrorModel> em = CreateObject<RateErrorModel> ();
+  em->SetAttribute ("ErrorRate", DoubleValue (error));
 
-  //// Install the internet stack on the nodes.
+  // Install the internet stack on the nodes.
 
   InternetStackHelper stack;
   stack.Install (left  );
@@ -213,7 +232,7 @@ main (int argc, char *argv[])
 
   Ipv4AddressHelper address;
 
-  //// Add IP addresses.
+  // Add IP addresses.
   Ipv4InterfaceContainer wifiInterfaceLeft   ;
   Ipv4InterfaceContainer wifiInterfaceRight  ;
   Ipv4InterfaceContainer wifiInterfaceCenter ;
@@ -223,12 +242,11 @@ main (int argc, char *argv[])
   wifiInterfaceCenter = address.Assign (apCenter);
   
   
-  
-  
-  NS_LOG_INFO ("Create Applications");
+  // NS_LOG_INFO ("Create Applications");
 
   uint16_t port = 25555;
 
+  //we will reuse UDP echo clients as our senders and ignore the responses
   UdpEchoClientHelper echoClient (wifiInterfaceCenter.GetAddress(0), port);
   echoClient.SetAttribute ("MaxPackets", UintegerValue (1000000000));
   echoClient.SetAttribute ("Interval", TimeValue (Seconds (0.01)));
@@ -245,6 +263,7 @@ main (int argc, char *argv[])
   lbApp->SetStopTime (Seconds (10.0));
 
 
+  //we will reuse TCP sinks as our receivers 
   PacketSinkHelper sink ("ns3::TcpSocketFactory",
                          InetSocketAddress (Ipv4Address::GetAny (), port));
   ApplicationContainer sinkApps = sink.Install (right);
@@ -253,7 +272,7 @@ main (int argc, char *argv[])
   sinkApps.Start (Seconds (0.0));
   sinkApps.Stop (Seconds (10));
   
-  NS_LOG_INFO ("Run Simulation");
+  // NS_LOG_INFO ("Run Simulation");
 
   std::string fileNameWithNoExtension = "FlowVSThroughput_";
   std::string mainPlotTitle = "Flow vs Throughput";
@@ -282,6 +301,8 @@ main (int argc, char *argv[])
   Ptr<FlowMonitor> flowMonitor;
   FlowMonitorHelper flowHelper;
   flowMonitor = flowHelper.InstallAll ();
+
+  //one of the two following lines will be commented the other monitors either the throughput or the average endtoend delay
 
   ThroughputMonitor (&flowHelper, flowMonitor, dataset);
   //AverageDelayMonitor (&flowHelper, flowMonitor, dataset);
