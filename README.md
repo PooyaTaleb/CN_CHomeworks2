@@ -1,8 +1,8 @@
 # CN_CHomeworks2
 second project for network course at Tehran university
 
-first we set our paramaters for our simulation in the main function. our parameters our error rate and bit rate and the number of receiver nodes and sender nodes which should be the same. then we create our reciever and sender nodes and our load balancer node. we implement the load balancer node in the LB class.
-the sender nodes send their packets via UDP protocol to the load balancer, and load balancer sends randomly sends each packet to a receiver node via TCP protocol.
+First we set our paramaters for our simulation in the main function. our parameters our error rate and bit rate and the number of receiver nodes and sender nodes which are controlled by the same variable. We then create our reciever and sender nodes and our load balancer node. We implement the load balancer node in the LB class.
+the sender nodes send their packets via UDP protocol to the load balancer, and load balancer sends each packet to a random receiver node via TCP protocol.
 
 sender nodes sending their packets via UDP protocol is handled below:
 ![image](https://user-images.githubusercontent.com/121708191/216151389-694e29c7-203c-4840-875e-199ee8ac6be3.png)
@@ -15,7 +15,8 @@ receiver nodes receiving packets via tcp protocol is handles below:
 
 
 
-we calculate throuput and average end to end delay parameters in the topology described above using two functions ThroughputMonitor and AverageDelayMonitor.
+We calculate throuput and average end to end delay parameters in the topology described above using two functions ThroughputMonitor and AverageDelayMonitor.
+Comment one and use the other.
 
 our ThroughputMonitor is as follows:
 ![image](https://user-images.githubusercontent.com/121708191/216147022-47841602-18f0-43de-9c57-1d27b8ba2024.png)
