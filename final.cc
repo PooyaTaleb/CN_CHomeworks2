@@ -27,10 +27,6 @@
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE ("TcpComparision");
-
-Ptr<PacketSink> tcpSink;
-
 void
 ThroughputMonitor (FlowMonitorHelper *fmhelper, Ptr<FlowMonitor> flowMon,Gnuplot2dDataset DataSet)
 {
