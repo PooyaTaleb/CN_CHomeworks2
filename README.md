@@ -13,12 +13,13 @@ load balancer node is initialized below and defined in LB class:
 receiver nodes receiving packets via tcp protocol is handles below:
 ![image](https://user-images.githubusercontent.com/121708191/216151856-6c99e01d-e0fe-4552-ba74-475dacf63bb6.png)
 
-
+All sender and receiver nodes are mobile and move randomly and the load blancer is stationary.
 
 We calculate throuput and average end to end delay parameters in the topology described above using two functions ThroughputMonitor and AverageDelayMonitor.
 Comment one and use the other.
+Both monitors are modified from the sample.cc monitors.
 
-our ThroughputMonitor is as follows:
+Our ThroughputMonitor is as follows:
 ![image](https://user-images.githubusercontent.com/121708191/216147022-47841602-18f0-43de-9c57-1d27b8ba2024.png)
 
 which yields the following result:
@@ -26,9 +27,10 @@ which yields the following result:
 
 the first 3 flows are from load balancer to 3 receiver nodes and the next 3 flows are from sender nodes to load balancer. each flow calculates a throughput which varies from link to link.
 
-our AverageDelayMonitor is as follows:
+Our AverageDelayMonitor is as follows:
 ![image](https://user-images.githubusercontent.com/121708191/216149057-287d533f-6acc-4d49-b3bd-b2405a8d08bf.png)
 
 which yeilds the following result:
 ![image](https://user-images.githubusercontent.com/121708191/216149650-8da88795-aaca-46a8-b1c1-7b87bc278bd8.png)
 
+similarly the first 3 flows are from load balancer to 3 receiver nodes and the next 3 flows are from sender nodes to load balancer. each flow calculates a delay which varies from link to link.
